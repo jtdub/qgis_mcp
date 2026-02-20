@@ -1,16 +1,21 @@
 # QGISMCP - QGIS Model Context Protocol Integration
 
-QGISMCP connects [QGIS](https://qgis.org/) to [Claude AI](https://claude.ai/chat) through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro), allowing Claude to directly interact with and control QGIS. This integration enables prompt assisted project creation, layer loading, code execution and more.
+QGISMCP connects [QGIS](https://qgis.org/) to [Claude AI](https://claude.ai/chat) through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro), allowing Claude to directly interact with and control QGIS. This integration enables prompt assisted project creation, layer loading, styling, cartography, spatial analysis, and more.
 
 This project is strongly based on the [BlenderMCP](https://github.com/ahujasid/blender-mcp/tree/main) project by [Siddharth Ahuja](https://x.com/sidahuj)
 
 ## Features
 
-- **Two-way communication**: Connect Claude AI to QGIS through a socket-based server.
-- **Project manipulation**: Create, load and save projects in QGIS.
-- **Layer manipulation**: Add and remove vector or raster layers to a project.
-- **Execute processing**: Execute processing algorithms ([Processing Toolbox](https://docs.qgis.org/3.40/en/docs/user_manual/processing/toolbox.html)).
-- **Code execution**: Run arbitrary Python code in QGIS from Claude. Very powerful, but also be very cautious using this tool.
+- **Two-way communication**: Connect Claude AI to QGIS through a socket-based server
+- **Project manipulation**: Create, load and save projects in QGIS
+- **Layer introspection**: Explore layers, fields, unique values, extents, and sample features
+- **Filtering & spatial ops**: Expression-based filtering, downstream river tracing, visibility and extent control
+- **Styling**: Simple, graduated, and categorized renderers plus labeling with line-following support
+- **Print layouts**: Create publication-quality maps with legends, inset maps, scale bars, and export to PDF/PNG
+- **Processing**: Execute processing algorithms from the Processing Toolbox
+- **Code execution**: Run arbitrary Python code in QGIS from Claude
+
+All coordinate inputs accept **WGS84 (EPSG:4326)**. All coordinate outputs are returned in **WGS84**.
 
 ## Components
 
@@ -23,8 +28,8 @@ The system consists of two main components:
 
 ### Prerequisites
 
-- QGIS 3.X (only tested on 3.22)
-- Claude desktop
+- QGIS 3.34 LTR or newer
+- Claude Desktop or Claude Code
 - Python 3.10 or newer
 - uv package manager:
 
@@ -42,14 +47,12 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 Otherwise installation instructions are on their website: [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-**⚠️ Do not proceed before installing UV**
-
 ### Download code
 
 Download this repo to your computer. You can clone it with:
 
 ```bash
-git clone git@github.com:jjsantos01/qgis_mcp.git
+git clone git@github.com:jtdub/qgis_mcp.git
 ```
 
 ### QGIS plugin
@@ -58,11 +61,11 @@ You need to copy the folder [qgis_mcp_plugin](/qgis_mcp_plugin/) and its content
 
 You can get your profile folder in QGIS going to menu `Settings` -> `User profiles` -> `Open active profile folder` Then, go to `Python/plugins` and paste the folder `qgis_mcp_plugin`.
 
-> On a Windows machine the plugins folder is usually located at: `C:\Users\USER\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins` 
+> On a Windows machine the plugins folder is usually located at: `C:\Users\USER\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins`
 
-and on MacOS: `~/Library/Application\ Support/QGIS/QGIS3/profiles/default/python/plugins`
+and on macOS: `~/Library/Application\ Support/QGIS/QGIS3/profiles/default/python/plugins`
 
- Then close QGIS and open it again. Go to the menu option `Plugins` > `Installing and Managing Plugins`, select the `All` tab and search for "QGIS MCP", then mark the QGIS MCP checkbox.
+Then close QGIS and open it again. Go to the menu option `Plugins` > `Installing and Managing Plugins`, select the `All` tab and search for "QGIS MCP", then mark the QGIS MCP checkbox.
 
 ### Claude for Desktop Integration
 
@@ -77,12 +80,11 @@ Go to `Claude` > `Settings` > `Developer` > `Edit Config` > `claude_desktop_conf
             "command": "uv",
             "args": [
                 "--directory",
-                "/ABSOLUTE/PATH/TO/PARENT/REPO/FOLDER/qgis_mcp/src/qgis_mcp",
+                "/ABSOLUTE/PATH/TO/qgis_mcp/src/qgis_mcp",
                 "run",
                 "qgis_mcp_server.py"
             ]
         }
-
     }
 }
 ```
@@ -102,37 +104,80 @@ Once the config file has been set on Claude, and the server is running on QGIS, 
 
 ![Claude tools](assets/imgs/claude-available-tools.png)
 
-#### Tools
+## Development
 
-- `ping` - Simple ping command to check server connectivity
-- `get_qgis_info` - Get QGIS information about the current installation
-- `load_project` - Load a QGIS project from the specified path
-- `create_new_project` - Create a new project and save it
-- `get_project_info` - Get current project information
-- `add_vector_layer` - Add a vector layer to the project
-- `add_raster_layer` - Add a raster layer to the project
-- `get_layers` - Retrieve all layers in the current project
-- `remove_layer` - Remove a layer from the project by its ID
-- `zoom_to_layer` - Zoom to the extent of a specified layer
-- `get_layer_features` - Retrieve features from a vector layer with an optional limit
-- `execute_processing` - Execute a processing algorithm with the given parameters
-- `save_project` - Save the current project to the given path
-- `render_map` - Render the current map view to an image file
-- `execute_code` - Execute arbitrary PyQGIS code provided as a string
+### Setup
 
-### Example Commands
-
-This is the example I used for the [demo](https://x.com/jjsantoso/status/1900293848271667395):
-
-```plain
-You have access to the tools to work with QGIS. You will do the following:
-	1. Ping to check the connection. If it works, continue with the following steps.
-	2. Create a new project and save it at: "C:/Users/USER/GitHub/qgis_mcp/data/cdmx.qgz"
-	3. Load the vector layer: ""C:/Users/USER/GitHub/qgis_mcp/data/cdmx/mgpc_2019.shp" and name it "Colonias".
-	4. Load the raster layer: "C:/Users/USER/GitHub/qgis_mcp/data/09014.tif" and name it "BJ"
-	5. Zoom to the "BJ" layer.
-	6. Execute the centroid algorithm on the "Colonias" layer. Skip the geometry check. Save the output to "colonias_centroids.geojson".
-	7. Execute code to create a choropleth map using the "POB2010" field in the "Colonias" layer. Use the quantile classification method with 5 classes and the Spectral color ramp.
-	8. Render the map to "C:/Users/USER/GitHub/qgis_mcp/data/cdmx.png"
-	9. Save the project.
+```bash
+uv sync --extra dev    # install all dependencies including test/lint tools
 ```
+
+### Testing
+
+```bash
+uv run pytest                                              # run all tests
+uv run pytest tests/test_mcp_tools.py::test_ping           # run a single test
+uv run pytest --cov=src/qgis_mcp --cov-report=term-missing # coverage report
+```
+
+### Linting
+
+Run in this order:
+
+```bash
+uv run ruff check --fix .        # lint + auto-fix (includes import sorting)
+uv run ruff format .             # auto-format
+uv run pylint src/qgis_mcp/      # static analysis
+uv run mypy src/qgis_mcp/        # type checking
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full development guidelines.
+
+## Tools
+
+See [tools.md](tools.md) for the full reference with parameters and return values.
+
+### Project Management
+- `ping` — check server connectivity
+- `get_qgis_info` — QGIS version and profile info
+- `create_new_project` — create and save new project
+- `load_project` — load QGIS project file
+- `get_project_info` — project metadata and layer list
+- `save_project` — save current project
+
+### Layer Management
+- `add_vector_layer` — add vector layer (shapefile, GeoJSON, GeoPackage)
+- `add_raster_layer` — add raster layer (GeoTIFF, etc.)
+- `remove_layer` — remove layer by ID
+- `zoom_to_layer` — zoom to layer extent
+
+### Introspection
+- `list_layers` — all layers with CRS, fields, geometry type, feature count
+- `get_layer_fields` — detailed field info (type, length, precision)
+- `get_unique_values` — unique values for a field
+- `sample_features` — sample features with optional expression filter
+- `get_layer_extent` — bounding box in WGS84
+
+### Filtering & Spatial Operations
+- `filter_layer` — expression-based filtering to memory layer
+- `trace_downstream` — network topology tracing (HydroSHEDS compatible)
+- `set_layer_visibility` — toggle layer visibility
+- `set_canvas_extent` — set map canvas extent in WGS84
+
+### Styling
+- `style_line_graduated` — graduated line width by field value
+- `style_simple` — simple single-symbol styling
+- `style_categorized` — categorized styling with color ramp
+- `add_labels` — labeling with line-following and buffer support
+
+### Print Layout & Cartography
+- `create_print_layout` — layout with map, title, scale bar, north arrow
+- `add_legend` — filtered legend with positioning
+- `add_inset_map` — inset/overview map with extent indicator
+- `export_layout` — export to PDF or image
+
+### Utilities
+- `get_layer_features` — get vector features with limit
+- `execute_processing` — run QGIS Processing algorithms
+- `render_map` — render map canvas to image
+- `execute_code` — execute arbitrary PyQGIS code
