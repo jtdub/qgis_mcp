@@ -10,3 +10,12 @@ wheels/
 # Virtual environments
 .venv
 data/
+
+# Testing & Coverage
+htmlcov/
+.coverage
+.pytest_cache/
+
+# Linter caches
+.mypy_cache/
+.ruff_cache/

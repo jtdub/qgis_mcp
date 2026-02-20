@@ -1,24 +1,22 @@
-
-
 # Contributing to QGIS MCP
 
-Thank you for your interest in contributing! 🎉  
-This project connects [QGIS](https://qgis.org/) to [Claude AI](https://claude.ai/chat) through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro)). Your help in improving this integration is very welcome.
+Thank you for your interest in contributing!
+This project connects [QGIS](https://qgis.org/) to [Claude AI](https://claude.ai/chat) through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro). Your help in improving this integration is very welcome.
 
 ## Getting Started
 
-1. **Fork the Repository**  
+1. **Fork the Repository**
    Clone your fork locally:
    ```bash
    git clone git@github.com:YOUR-USERNAME/qgis_mcp.git
    cd qgis_mcp
    ```
 
-2. **Install Prerequisites**  
-   - QGIS 3.X (tested on 3.22)  
-   - Python 3.10 or newer  
-   - [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager  
-   - Claude desktop  
+2. **Install Prerequisites**
+   - QGIS 3.34 LTR or newer
+   - Python 3.10 or newer
+   - [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
+   - Claude Desktop or Claude Code
 
    On Mac:
    ```bash
@@ -30,8 +28,13 @@ This project connects [QGIS](https://qgis.org/) to [Claude AI](https://claude.ai
    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
 
-3. **Set Up the QGIS Plugin**  
-   Create a symlink from this repo’s `qgis_mcp_plugin` folder to your QGIS profile plugin directory.
+3. **Install Dependencies**
+   ```bash
+   uv sync --extra dev
+   ```
+
+4. **Set Up the QGIS Plugin**
+   Create a symlink from this repo's `qgis_mcp_plugin` folder to your QGIS profile plugin directory.
 
    On Mac:
    ```bash
@@ -47,7 +50,7 @@ This project connects [QGIS](https://qgis.org/) to [Claude AI](https://claude.ai
 
    Restart QGIS, go to `Plugins` > `Manage and Install Plugins`, search for **QGIS MCP**, and enable it.
 
-4. **Configure Claude Desktop**  
+5. **Configure Claude Desktop**
    Add the server configuration to `claude_desktop_config.json`:
    ```json
    {
@@ -71,14 +74,60 @@ This project connects [QGIS](https://qgis.org/) to [Claude AI](https://claude.ai
 - Run the MCP server via Claude Desktop integration.
 - Make your changes and test locally.
 
+## Testing
+
+Run the full test suite:
+
+```bash
+uv run pytest
+```
+
+Run a single test:
+
+```bash
+uv run pytest tests/test_mcp_tools.py::test_ping
+```
+
+Run with coverage:
+
+```bash
+uv run pytest --cov=src/qgis_mcp --cov-report=term-missing
+```
+
+Tests cover the MCP server side only (no QGIS instance required). The plugin handlers require a running QGIS instance and are not part of the automated suite.
+
+## Linting
+
+Run the full linting pipeline in this order:
+
+```bash
+uv run ruff check --fix .        # lint + auto-fix (includes import sorting)
+uv run ruff format .             # auto-format
+uv run pylint src/qgis_mcp/      # static analysis (MCP server only)
+uv run mypy src/qgis_mcp/        # type checking (MCP server only)
+```
+
+Import sorting is handled by ruff's built-in isort rule (`I` in the ruff `select` list). There is no need for a separate `isort` installation.
+
+## Adding a New Tool
+
+Every new tool requires changes in **both** the plugin and the MCP server:
+
+1. **Plugin** (`qgis_mcp_plugin/qgis_mcp_plugin.py`): add a handler method and register it in the `handlers` dict inside `execute_command()`
+2. **MCP server** (`src/qgis_mcp/qgis_mcp_server.py`): add an `@mcp.tool()` function that calls `qgis.send_command("my_tool", {params})`
+3. **Docs**: update [tools.md](tools.md) with parameters and return values
+
+All coordinate I/O uses **WGS84 (EPSG:4326)**. Use `_find_layer_by_name()` for layer lookup by name.
+
 ## Contributing Guidelines
 
 - Keep PRs focused on a single change.
 - Write clear commit messages.
+- Ensure tests pass and linters are clean before submitting.
 - Update docs if behavior changes.
 - Be cautious when using `execute_code` (it runs arbitrary PyQGIS).
 
 ## Reporting Issues
 
-- Use [GitHub Issues](https://github.com/jjsantos01/qgis_mcp/issues).
+- Use [GitHub Issues](https://github.com/jtdub/qgis_mcp/issues).
 - Include OS, QGIS version, and error logs where relevant.
