@@ -7,6 +7,7 @@ import sys
 import traceback
 
 from qgis.core import (
+    NULL,
     Qgis,
     QgsApplication,  # Rendering; Print Layout; Labels
     QgsCategorizedSymbolRenderer,
@@ -596,7 +597,6 @@ class QgisMCPServer(QObject):
             raise Exception(f"Invalid expression: {expr.parserErrorString()}")
 
         # Create memory layer with WGS84 CRS
-        self._wgs84_crs()
         geom_type = self._geometry_type_name(layer)
         mem_layer = QgsVectorLayer(f"{geom_type}?crs=EPSG:4326", output_name, "memory")
         mem_provider = mem_layer.dataProvider()
@@ -1368,8 +1368,8 @@ class QgisMCPServer(QObject):
         Creates a new QGIS project and saves it at the specified path.
         If a project is already loaded, it clears it before creating the new one.
 
-        :param project_path: Full path where the project will be saved
-                            (e.g., 'C:/path/to/project.qgz')
+        :param path: Full path where the project will be saved
+                     (e.g., 'C:/path/to/project.qgz')
         """
         project = QgsProject.instance()
 

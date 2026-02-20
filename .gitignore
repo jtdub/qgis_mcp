@@ -15,3 +15,7 @@ data/
 htmlcov/
 .coverage
 .pytest_cache/
+
+# Linter caches
+.mypy_cache/
+.ruff_cache/

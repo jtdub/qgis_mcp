@@ -76,10 +76,13 @@ class QgisMCPServer:
             )
 
         command = {"type": command_type, "params": params or {}}
-        assert self.socket is not None  # guaranteed by _is_connected / _reconnect above
+        if self.socket is None:
+            raise ConnectionError("Socket is unexpectedly None after connection check")
 
-        if timeout:
+        if timeout is not None:
             self.socket.settimeout(timeout)
+
+        max_response_bytes = 50 * 1024 * 1024  # 50 MB safety limit
 
         try:
             # Send the command
@@ -96,10 +99,13 @@ class QgisMCPServer:
                     raise Exception(f"Connection closed by QGIS while waiting for response to '{command_type}'")
                 response_data += chunk
 
+                if len(response_data) > max_response_bytes:
+                    raise Exception(f"Response for '{command_type}' exceeded {max_response_bytes} bytes")
+
                 try:
                     result = json.loads(response_data.decode("utf-8"))
                     return result
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, UnicodeDecodeError):
                     continue  # Keep receiving — response is not yet complete
 
         except TimeoutError:
@@ -122,15 +128,19 @@ class QgisMCPServer:
                     if not chunk:
                         raise Exception("Connection closed during retry")
                     response_data += chunk
+
+                    if len(response_data) > max_response_bytes:
+                        raise Exception(f"Response for '{command_type}' exceeded {max_response_bytes} bytes")
+
                     try:
                         return json.loads(response_data.decode("utf-8"))
-                    except json.JSONDecodeError:
+                    except (json.JSONDecodeError, UnicodeDecodeError):
                         continue
             except Exception as retry_err:
                 raise Exception(f"Failed to execute '{command_type}' after reconnect: {retry_err}")
         finally:
             # Reset timeout to default
-            if timeout and self.socket:
+            if timeout is not None and self.socket:
                 self.socket.settimeout(self.DEFAULT_TIMEOUT)
 
 
@@ -220,7 +230,7 @@ def load_project(ctx: Context, path: str) -> str:
 
 @mcp.tool()
 def create_new_project(ctx: Context, path: str) -> str:
-    """Create a new project a save it"""
+    """Create a new project and save it."""
     qgis = get_qgis_connection()
     result = qgis.send_command("create_new_project", {"path": path})
     return json.dumps(result, indent=2)
